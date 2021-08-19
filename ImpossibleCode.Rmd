@@ -1,0 +1,382 @@
+---
+title: "R Notebook"
+output:
+  word_document: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r}
+library(psych)
+library(ez)
+library(tidyr) 
+library(readr)
+library(dplyr)
+library(ggplot2)
+
+#The data collected from this experiment consisted of a few variables
+  #the type of object participants were seeing could either be impossible or possible 
+      #then at the test phase, the test object could either be present or not present
+  #the set size (amount of objects displayed) varied between 1 and 5
+
+#Each participant recieved over 120 trials each, evenly spread across all levels of of the independant variable
+  #the goal of this R script was to calculate the mean reaction time and associated K value (a value to measure working memory capacity) of each participant for each level of the level of the indepedent variable. 
+  #in addition, this script would also bind each participants demographic data to their performance on this test. 
+
+#Have to set working directory
+setwd("C:/Users/David/Desktop/Psych Lab Stuff/thesis paper notes/Data") 
+
+#Import Raw Data CSV files
+AnthonyRaw <- read_csv("Anthony.csv",  col_types = cols(setsize = "c"))
+BarbaraRaw <- read_csv("Barbara.csv",  col_types = cols(setsize = "c"))
+DimaRaw <- read_csv("Dima.csv",  col_types = cols(setsize = "c"))
+MonicaRaw <- read_csv("Monica.csv",  col_types = cols(setsize = "c"))
+NatashaRaw <- read_csv("Natasha.csv",  col_types = cols(setsize = "c"))
+SybilRaw <- read_csv("Sybil.csv",  col_types = cols(setsize = "c"))
+NicoleRaw <- read_csv("Nicole.csv", col_types = cols(setsize = "c"))
+Prolific1Raw <- read_csv ("5d30eb1a18d10b001813369e.csv", col_types = cols(setsize = "c"))
+Prolific2Raw <- read_csv ("5f76745f8a6ec011f822e08a.csv", col_types = cols(setsize = "c"))
+#Prolific3Raw <- read_csv ("603e251588a7cae131f4a3ac.csv", col_types = cols(setsize = "c"))
+      #excluded due to poor data
+Prolific4Raw <- read_csv ("5f096a0d891eb81ec85b780a.csv", col_types = cols(setsize = "c"))
+Prolific5Raw <- read_csv ("5e1b31e276f4a1361c7500a1.csv", col_types = cols(setsize = "c"))
+Prolific6Raw <- read_csv ("5fad416622f55141012b3998.csv", col_types = cols(setsize = "c"))
+Prolific7Raw <- read_csv ("5eb9b9cfb3939c0dc7b8ee43.csv", col_types = cols(setsize = "c"))
+AylaRaw  <- read_csv ("Ayla.csv", col_types = cols(setsize = "c"))
+Prolific8Raw <- read_csv ("603914a2ed55293204edf74e.csv", col_types = cols(setsize = "c"))
+Prolific9Raw <- read_csv ("60401d29ac48a7206efa723b.csv", col_types = cols(setsize = "c"))
+Prolific10Raw <- read_csv ("603be4b0babbb59215931fe0.csv", col_types = cols(setsize = "c"))
+Prolific11Raw <- read_csv ("5f9180a9cd707207f8465a19.csv", col_types = cols(setsize = "c"))
+Prolific12Raw <- read_csv ("5f8310cc97a96f4484b0dbdc.csv", col_types = cols(setsize = "c"))
+Prolific13Raw <- read_csv ("5f639b571cb2830a931bc80.csv", col_types = cols(setsize = "c"))
+Prolific14Raw <- read_csv ("5f578fcd87cb442352a8ac79.csv", col_types = cols(setsize = "c"))
+Prolific15Raw <- read_csv ("5ec5bd4ce79b5061d7a5f8a6.csv", col_types = cols(setsize = "c"))
+Prolific16Raw <- read_csv ("5e886b509c60bc4e238ca556.csv", col_types = cols(setsize = "c"))
+Prolific17Raw <- read_csv ("5d77c0eb4a666c0019561a80.csv", col_types = cols(setsize = "c"))
+Prolific18Raw <- read_csv ("5d39dd63c49dae00016065c7.csv", col_types = cols(setsize = "c"))
+Prolific19Raw <- read_csv ("5c573e54e9813700018acc31.csv", col_types = cols(setsize = "c"))
+
+
+
+
+#flip bad responses
+    #noticed the person was well under 50% accuracy, thus they had misread the instructions and flipped the response keys. 
+Prolific7Raw <- Prolific7Raw %>% mutate(key_resp.corr = case_when(key_resp.corr == 0 ~ 1,
+                                                                  key_resp.corr == 1 ~0, 
+                                                                  TRUE ~ key_resp.corr))
+
+#Combine them into a database
+CombinedData <- bind_rows(AnthonyRaw,BarbaraRaw,DimaRaw,MonicaRaw,NatashaRaw,SybilRaw,NicoleRaw,Prolific1Raw,Prolific2Raw,Prolific4Raw,Prolific5Raw,Prolific6Raw,Prolific7Raw,AylaRaw,Prolific8Raw,Prolific9Raw,Prolific10Raw, Prolific11Raw, Prolific12Raw, Prolific13Raw, Prolific14Raw, Prolific15Raw, Prolific16Raw, Prolific17Raw,Prolific18Raw,Prolific19Raw)
+
+CombinedData <- CombinedData[order(CombinedData$participant),]
+
+
+#make seperate set for k calculations 
+CombinedDataK <- dplyr::select(CombinedData,"participant", "key_resp.rt","key_resp.corr","corrans", "study","setsize")
+
+#Clean and grab only important variables that will be used for calculations later 
+CombinedData <- dplyr::select(CombinedData,"participant", "key_resp.rt","key_resp.corr","study","setsize")
+
+
+
+#make a clean csv
+```
+
+
+```{r}
+write.csv(CombinedDataK,"CleanedDatabase.csv")
+#MUST run chunk before
+
+setwd("C:/Users/David/Desktop/Psych Lab Stuff/thesis paper notes/Data") #Have to set working directory
+
+#CALCULATE MEAN ACCURACY#
+#Split by target type
+  #Then calculate mean reaction times  
+    #then combine into single data frame. 
+  data_combined_1 <- dplyr::filter(CombinedData, setsize == "1")
+  data_combined_2 <- dplyr::filter(CombinedData, setsize == "2")
+  data_combined_3 <- dplyr::filter(CombinedData, setsize == "3")
+  data_combined_4 <- dplyr::filter(CombinedData, setsize == "4")
+  data_combined_5 <- dplyr::filter(CombinedData, setsize == "5")
+  
+#####Possible Objects#####
+  #SetSize1
+Possible_Acc_1 <- dplyr::filter(data_combined_1, study == "possible")
+  Possible_Acc_1 <- aggregate(Possible_Acc_1[,3], list(Possible_Acc_1$participant), mean)
+    Possible_Acc_1 <- plyr::rename(Possible_Acc_1, c("key_resp.corr" = "AccPossible1"))
+    Possible_Acc_1 <- plyr::rename(Possible_Acc_1, c("Group.1" = "Participant"))
+  #SetSize2
+Possible_Acc_2 <- dplyr::filter(data_combined_2, study == "possible")
+  Possible_Acc_2 <- aggregate(Possible_Acc_2[,3], list(Possible_Acc_2$participant), mean)
+    Possible_Acc_2 <- plyr::rename(Possible_Acc_2, c("key_resp.corr" = "AccPossible2"))
+    Possible_Acc_2 <- plyr::rename(Possible_Acc_2, c("Group.1" = "Participant"))
+    #SetSize3
+Possible_Acc_3 <- dplyr::filter(data_combined_3, study == "possible")
+  Possible_Acc_3 <- aggregate(Possible_Acc_3[,3], list(Possible_Acc_3$participant), mean)
+    Possible_Acc_3 <- plyr::rename(Possible_Acc_3, c("key_resp.corr" = "AccPossible3"))
+    Possible_Acc_3 <- plyr::rename(Possible_Acc_3, c("Group.1" = "Participant"))
+  #SetSize4
+Possible_Acc_4 <- dplyr::filter(data_combined_4, study == "possible")
+  Possible_Acc_4 <- aggregate(Possible_Acc_4[,3], list(Possible_Acc_4$participant), mean)
+    Possible_Acc_4 <- plyr::rename(Possible_Acc_4, c("key_resp.corr" = "AccPossible4"))
+    Possible_Acc_4 <- plyr::rename(Possible_Acc_4, c("Group.1" = "Participant"))  
+  #SetSize5
+Possible_Acc_5 <- dplyr::filter(data_combined_5, study == "possible")
+  Possible_Acc_5 <- aggregate(Possible_Acc_5[,3], list(Possible_Acc_5$participant), mean)
+    Possible_Acc_5 <- plyr::rename(Possible_Acc_5, c("key_resp.corr" = "AccPossible5"))
+    Possible_Acc_5 <- plyr::rename(Possible_Acc_5, c("Group.1" = "Participant"))  
+    
+complete_possible <- bind_cols(Possible_Acc_1, Possible_Acc_2, Possible_Acc_3, Possible_Acc_4, Possible_Acc_5)
+complete_possible <- dplyr::select(complete_possible,"Participant", "AccPossible1","AccPossible2","AccPossible3","AccPossible4","AccPossible5")
+  
+####Impossible Objects####
+   #SetSize1
+Impossible_Acc_1 <- dplyr::filter(data_combined_1, study == "impossible")
+  Impossible_Acc_1 <- aggregate(Impossible_Acc_1[,3], list(Impossible_Acc_1$participant), mean)
+    Impossible_Acc_1 <- plyr::rename(Impossible_Acc_1, c("key_resp.corr" = "AccImpossible1"))
+    Impossible_Acc_1 <- plyr::rename(Impossible_Acc_1, c("Group.1" = "Participant"))
+
+   #SetSize2
+Impossible_Acc_2 <- dplyr::filter(data_combined_2, study == "impossible")
+  Impossible_Acc_2 <- aggregate(Impossible_Acc_2[,3], list(Impossible_Acc_2$participant), mean)
+    Impossible_Acc_2 <- plyr::rename(Impossible_Acc_2, c("key_resp.corr" = "AccImpossible2"))
+    Impossible_Acc_2 <- plyr::rename(Impossible_Acc_2, c("Group.1" = "Participant"))
+    
+   #SetSize3
+Impossible_Acc_3 <- dplyr::filter(data_combined_3, study == "impossible")
+  Impossible_Acc_3 <- aggregate(Impossible_Acc_3[,3], list(Impossible_Acc_3$participant), mean)
+    Impossible_Acc_3 <- plyr::rename(Impossible_Acc_3, c("key_resp.corr" = "AccImpossible3"))
+    Impossible_Acc_3 <- plyr::rename(Impossible_Acc_3, c("Group.1" = "Participant"))
+    
+       #SetSize4
+Impossible_Acc_4 <- dplyr::filter(data_combined_4, study == "impossible")
+  Impossible_Acc_4 <- aggregate(Impossible_Acc_4[,3], list(Impossible_Acc_4$participant), mean)
+    Impossible_Acc_4 <- plyr::rename(Impossible_Acc_4, c("key_resp.corr" = "AccImpossible4"))
+    Impossible_Acc_4 <- plyr::rename(Impossible_Acc_4, c("Group.1" = "Participant"))
+    
+       #SetSize5
+Impossible_Acc_5 <- dplyr::filter(data_combined_5, study == "impossible")
+  Impossible_Acc_5 <- aggregate(Impossible_Acc_5[,3], list(Impossible_Acc_5$participant), mean)
+    Impossible_Acc_5 <- plyr::rename(Impossible_Acc_5, c("key_resp.corr" = "AccImpossible5"))
+    Impossible_Acc_5 <- plyr::rename(Impossible_Acc_5, c("Group.1" = "Participant"))
+    
+    
+complete_impossible <- bind_cols(Impossible_Acc_1,Impossible_Acc_2, Impossible_Acc_3, Impossible_Acc_4, Impossible_Acc_5)
+complete_impossible <- dplyr::select(complete_impossible,"Participant", "AccImpossible1","AccImpossible2","AccImpossible3","AccImpossible4","AccImpossible5")   
+
+  #Print out CSV
+write.csv(complete_possible,"PossbleMeans.csv")
+write.csv(complete_impossible, "ImpossibleMeans.csv")
+```
+
+```{r}
+#Calculating K Values
+setwd("C:/Users/David/Desktop/Psych Lab Stuff/thesis paper notes/Data")  #Have to set working directory
+
+
+#Calculating K for impossible
+  #setsize 1
+hitsimpossible_1 <- dplyr::filter(CombinedDataK, study == "impossible", corrans == "d", setsize == 1)
+  hitsimpossible_1 <- aggregate(hitsimpossible_1[,3], list(hitsimpossible_1$participant), mean)
+    hitsimpossible_1 <- plyr::rename(hitsimpossible_1, c("key_resp.corr" = "HitRatio1"))
+    hitsimpossible_1 <- plyr::rename(hitsimpossible_1, c("Group.1" = "participant"))
+    
+missimpossible_1 <- dplyr::filter(CombinedDataK, study == "impossible", corrans == "s", setsize == 1)
+  missimpossible_1 <- aggregate(missimpossible_1[,3], list(missimpossible_1$participant), mean)
+  missimpossible_1 <- missimpossible_1 %>% mutate(key_resp.corr = 1 - key_resp.corr)
+    missimpossible_1 <- plyr::rename(missimpossible_1, c("key_resp.corr" = "FARatio1"))
+    missimpossible_1 <- plyr::rename(missimpossible_1, c("Group.1" = "participant"))
+    
+k1 <- bind_cols(hitsimpossible_1,missimpossible_1)
+k1 <- k1 %>% select("participant", "HitRatio1", "FARatio1") %>% mutate("k1" =(k1$HitRatio1 - k1$FARatio1)* 1)
+#setsize 2
+hitsimpossible_2 <- dplyr::filter(CombinedDataK, study == "impossible", corrans == "d", setsize == 2)
+  hitsimpossible_2 <- aggregate(hitsimpossible_2[,3], list(hitsimpossible_2$participant), mean)
+    hitsimpossible_2 <- plyr::rename(hitsimpossible_2, c("key_resp.corr" = "HitRatio2"))
+    hitsimpossible_2 <- plyr::rename(hitsimpossible_2, c("Group.1" = "participant"))
+    
+missimpossible_2 <- dplyr::filter(CombinedDataK, study == "impossible", corrans == "s", setsize == 2)
+  missimpossible_2  <- aggregate(missimpossible_2 [,3], list(missimpossible_2$participant), mean)
+  missimpossible_2  <- missimpossible_2  %>% mutate(key_resp.corr = 1 - key_resp.corr)
+    missimpossible_2  <- plyr::rename(missimpossible_2 , c("key_resp.corr" = "FARatio2"))
+    missimpossible_2  <- plyr::rename(missimpossible_2 , c("Group.1" = "participant"))
+    
+k2 <- bind_cols(hitsimpossible_2,missimpossible_2)
+k2 <- k2 %>% select("participant", "HitRatio2", "FARatio2") %>% mutate("k2" =(k2$HitRatio2 - k2$FARatio2)* 2)
+#setsize 3 
+#setsize 3 
+hitsimpossible_3 <- dplyr::filter(CombinedDataK, study == "impossible", corrans == "d", setsize == 3)
+  hitsimpossible_3 <- aggregate(hitsimpossible_3[,3], list(hitsimpossible_3$participant), mean)
+    hitsimpossible_3 <- plyr::rename(hitsimpossible_3, c("key_resp.corr" = "HitRatio3"))
+    hitsimpossible_3 <- plyr::rename(hitsimpossible_3, c("Group.1" = "participant"))
+    
+missimpossible_3 <- dplyr::filter(CombinedDataK, study == "impossible", corrans == "s", setsize == 3)
+  missimpossible_3  <- aggregate(missimpossible_3 [,3], list(missimpossible_3$participant), mean)
+  missimpossible_3  <- missimpossible_3  %>% mutate(key_resp.corr = 1 - key_resp.corr)
+    missimpossible_3  <- plyr::rename(missimpossible_3 , c("key_resp.corr" = "FARatio3"))
+    missimpossible_3  <- plyr::rename(missimpossible_3 , c("Group.1" = "participant"))
+    
+k3 <- bind_cols(hitsimpossible_3,missimpossible_3)
+k3 <- k3 %>% select("participant", "HitRatio3", "FARatio3") %>% mutate("k3" =(k3$HitRatio3 - k3$FARatio3)* 3)
+
+#setsize 4
+hitsimpossible_4 <- dplyr::filter(CombinedDataK, study == "impossible", corrans == "d", setsize == 4)
+  hitsimpossible_4 <- aggregate(hitsimpossible_4[,3], list(hitsimpossible_4$participant), mean)
+    hitsimpossible_4 <- plyr::rename(hitsimpossible_4, c("key_resp.corr" = "HitRatio4"))
+    hitsimpossible_4 <- plyr::rename(hitsimpossible_4, c("Group.1" = "participant"))
+    
+missimpossible_4 <- dplyr::filter(CombinedDataK, study == "impossible", corrans == "s", setsize == 4)
+  missimpossible_4  <- aggregate(missimpossible_4 [,3], list(missimpossible_4$participant), mean)
+  missimpossible_4  <- missimpossible_4  %>% mutate(key_resp.corr = 1 - key_resp.corr)
+    missimpossible_4  <- plyr::rename(missimpossible_4 , c("key_resp.corr" = "FARatio4"))
+    missimpossible_4  <- plyr::rename(missimpossible_4 , c("Group.1" = "participant"))
+    
+k4 <- bind_cols(hitsimpossible_4,missimpossible_4)
+k4 <- k4 %>% select("participant", "HitRatio4", "FARatio4") %>% mutate("k4" =(k4$HitRatio4 - k4$FARatio4)* 4)
+
+#setsize 5
+hitsimpossible_5 <- dplyr::filter(CombinedDataK, study == "impossible", corrans == "d", setsize == 5)
+  hitsimpossible_5 <- aggregate(hitsimpossible_5[,3], list(hitsimpossible_5$participant), mean)
+    hitsimpossible_5 <- plyr::rename(hitsimpossible_5, c("key_resp.corr" = "HitRatio5"))
+    hitsimpossible_5 <- plyr::rename(hitsimpossible_5, c("Group.1" = "participant"))
+    
+missimpossible_5 <- dplyr::filter(CombinedDataK, study == "impossible", corrans == "s", setsize == 5)
+  missimpossible_5  <- aggregate(missimpossible_5 [,3], list(missimpossible_5$participant), mean)
+  missimpossible_5  <- missimpossible_5  %>% mutate(key_resp.corr = 1 - key_resp.corr)
+    missimpossible_5  <- plyr::rename(missimpossible_5 , c("key_resp.corr" = "FARatio5"))
+    missimpossible_5  <- plyr::rename(missimpossible_5 , c("Group.1" = "participant"))
+    
+k5 <- bind_cols(hitsimpossible_5,missimpossible_5)
+k5 <- k5 %>% select("participant", "HitRatio5", "FARatio5") %>% mutate("k5" =(k5$HitRatio5 - k5$FARatio5)* 5)
+
+#combine them into k values sheet for impossible
+kimpossible <- bind_cols(k1,k2,k3,k4,k5)
+#kimpossible <- kimpossible %>% select(-"participant1",-"participant2",-"participant3",-"participant4")
+
+kimpossible$ID <- seq.int(nrow(kimpossible))
+  #kimpossible$ID <- as.character(kimpossible$ID)
+  #kimpossible <- kimpossible %>% ungroup(participant)
+  #kimpossible %>% group_by(ID)
+  kimpossible <- dplyr::select(kimpossible,-"participant1",-"participant2",-"participant3",-"participant4")
+  kimpossible <- dplyr::select(kimpossible,"participant", "HitRatio1", "FARatio1", "k1","HitRatio2", "FARatio2", "k2","HitRatio3", "FARatio3", "k3","HitRatio4", "FARatio4", "k4","HitRatio5", "FARatio5", "k5")
+    
+write_csv(kimpossible,"KImpossible.csv")
+
+
+#Calculating K for possible
+#setsize 1
+hitspossible_1 <- dplyr::filter(CombinedDataK, study == "possible", corrans == "d", setsize == 1)
+  hitspossible_1 <- aggregate(hitspossible_1[,3], list(hitspossible_1$participant), mean)
+    hitspossible_1 <- plyr::rename(hitspossible_1, c("key_resp.corr" = "HitRatio1"))
+    hitspossible_1 <- plyr::rename(hitspossible_1, c("Group.1" = "participant"))
+    
+misspossible_1 <- dplyr::filter(CombinedDataK, study == "possible", corrans == "s", setsize == 1)
+  misspossible_1 <- aggregate(misspossible_1[,3], list(misspossible_1$participant), mean)
+  misspossible_1 <- misspossible_1 %>% mutate(key_resp.corr = 1 - key_resp.corr)
+    misspossible_1 <- plyr::rename(misspossible_1, c("key_resp.corr" = "FARatio1"))
+    misspossible_1 <- plyr::rename(misspossible_1, c("Group.1" = "participant"))
+    
+k1 <- bind_cols(hitspossible_1,misspossible_1)
+k1 <- k1 %>% select("participant", "HitRatio1", "FARatio1") %>% mutate("k1" =(k1$HitRatio1 - k1$FARatio1)* 1)
+#setsize 2
+hitspossible_2 <- dplyr::filter(CombinedDataK, study == "possible", corrans == "d", setsize == 2)
+  hitspossible_2 <- aggregate(hitspossible_2[,3], list(hitspossible_2$participant), mean)
+    hitspossible_2 <- plyr::rename(hitspossible_2, c("key_resp.corr" = "HitRatio2"))
+    hitspossible_2 <- plyr::rename(hitspossible_2, c("Group.1" = "participant"))
+    
+misspossible_2 <- dplyr::filter(CombinedDataK, study == "possible", corrans == "s", setsize == 2)
+  misspossible_2  <- aggregate(misspossible_2 [,3], list(misspossible_2$participant), mean)
+  misspossible_2  <- misspossible_2  %>% mutate(key_resp.corr = 1 - key_resp.corr)
+    misspossible_2  <- plyr::rename(misspossible_2 , c("key_resp.corr" = "FARatio2"))
+    misspossible_2  <- plyr::rename(misspossible_2 , c("Group.1" = "participant"))
+    
+k2 <- bind_cols(hitspossible_2,misspossible_2)
+k2 <- k2 %>% select("participant", "HitRatio2", "FARatio2") %>% mutate("k2" =(k2$HitRatio2 - k2$FARatio2)* 2)
+#setsize 3 
+#setsize 3 
+hitspossible_3 <- dplyr::filter(CombinedDataK, study == "possible", corrans == "d", setsize == 3)
+  hitspossible_3 <- aggregate(hitspossible_3[,3], list(hitspossible_3$participant), mean)
+    hitspossible_3 <- plyr::rename(hitspossible_3, c("key_resp.corr" = "HitRatio3"))
+    hitspossible_3 <- plyr::rename(hitspossible_3, c("Group.1" = "participant"))
+    
+misspossible_3 <- dplyr::filter(CombinedDataK, study == "possible", corrans == "s", setsize == 3)
+  misspossible_3  <- aggregate(misspossible_3 [,3], list(misspossible_3$participant), mean)
+  misspossible_3  <- misspossible_3  %>% mutate(key_resp.corr = 1 - key_resp.corr)
+    misspossible_3  <- plyr::rename(misspossible_3 , c("key_resp.corr" = "FARatio3"))
+    misspossible_3  <- plyr::rename(misspossible_3 , c("Group.1" = "participant"))
+    
+k3 <- bind_cols(hitspossible_3,misspossible_3)
+k3 <- k3 %>% select("participant", "HitRatio3", "FARatio3") %>% mutate("k3" =(k3$HitRatio3 - k3$FARatio3)* 3)
+
+#setsize 4
+hitspossible_4 <- dplyr::filter(CombinedDataK, study == "possible", corrans == "d", setsize == 4)
+  hitspossible_4 <- aggregate(hitspossible_4[,3], list(hitspossible_4$participant), mean)
+    hitspossible_4 <- plyr::rename(hitspossible_4, c("key_resp.corr" = "HitRatio4"))
+    hitspossible_4 <- plyr::rename(hitspossible_4, c("Group.1" = "participant"))
+    
+misspossible_4 <- dplyr::filter(CombinedDataK, study == "possible", corrans == "s", setsize == 4)
+  misspossible_4  <- aggregate(misspossible_4 [,3], list(misspossible_4$participant), mean)
+  misspossible_4  <- misspossible_4  %>% mutate(key_resp.corr = 1 - key_resp.corr)
+    misspossible_4  <- plyr::rename(misspossible_4 , c("key_resp.corr" = "FARatio4"))
+    misspossible_4  <- plyr::rename(misspossible_4 , c("Group.1" = "participant"))
+    
+k4 <- bind_cols(hitspossible_4,misspossible_4)
+k4 <- k4 %>% select("participant", "HitRatio4", "FARatio4") %>% mutate("k4" =(k4$HitRatio4 - k4$FARatio4)* 4)
+
+#setsize 5
+hitspossible_5 <- dplyr::filter(CombinedDataK, study == "possible", corrans == "d", setsize == 5)
+  hitspossible_5 <- aggregate(hitspossible_5[,3], list(hitspossible_5$participant), mean)
+    hitspossible_5 <- plyr::rename(hitspossible_5, c("key_resp.corr" = "HitRatio5"))
+    hitspossible_5 <- plyr::rename(hitspossible_5, c("Group.1" = "participant"))
+    
+misspossible_5 <- dplyr::filter(CombinedDataK, study == "possible", corrans == "s", setsize == 5)
+  misspossible_5  <- aggregate(misspossible_5 [,3], list(misspossible_5$participant), mean)
+  misspossible_5  <- misspossible_5  %>% mutate(key_resp.corr = 1 - key_resp.corr)
+    misspossible_5  <- plyr::rename(misspossible_5 , c("key_resp.corr" = "FARatio5"))
+    misspossible_5  <- plyr::rename(misspossible_5 , c("Group.1" = "participant"))
+    
+k5 <- bind_cols(hitspossible_5,misspossible_5)
+k5 <- k5 %>% select("participant", "HitRatio5", "FARatio5") %>% mutate("k5" =(k5$HitRatio5 - k5$FARatio5)* 5)
+
+#combine them into k values sheet for possible
+kpossible <- bind_cols(k1,k2,k3,k4,k5)
+#kpossible <- kpossible %>% select(-"participant1",-"participant2",-"participant3",-"participant4")
+
+kpossible$ID <- seq.int(nrow(kpossible))
+  #kpossible$ID <- as.character(kpossible$ID)
+  #kpossible <- kpossible %>% ungroup(participant)
+  #kpossible %>% group_by(ID)
+  kpossible <- dplyr::select(kpossible,-"participant1",-"participant2",-"participant3",-"participant4")
+  kpossible <- dplyr::select(kpossible,"participant", "HitRatio1", "FARatio1", "k1","HitRatio2", "FARatio2", "k2","HitRatio3", "FARatio3", "k3","HitRatio4", "FARatio4", "k4","HitRatio5", "FARatio5", "k5")
+    
+write_csv(kpossible,"Kpossible.csv")
+
+```
+
+```{r}
+#Time to combine means and k values! 
+setwd("C:/Users/David/Desktop/Psych Lab Stuff/thesis paper notes/Data/Means+k") #Have to set working directory
+Impossible_Means_k <- bind_cols(complete_impossible, kimpossible)
+Possible_Means_k <- bind_cols(complete_possible, kpossible)
+
+write_csv(Impossible_Means_k, "Impossible_Means_k.csv")
+write_csv(Possible_Means_k, "Possible_Means_k.csv")
+```
+```{r}
+#import and combine with demographic data and we're finished with using R. 
+  #Will use SPSS and JASP to visualize the data and complete inferential statistics. 
+setwd("C:/Users/David/Desktop/Psych Lab Stuff/thesis paper notes/Data")
+demographic <-  read_csv("Thesis Demographics.csv")
+demographic <- demographic[order(demographic$participant_id),]
+demographic <- dplyr::select(demographic, "participant_id", "age", "Country of Birth", "Current Country of Residence", "First Language","First Language", "Nationality", "Sex", "Student Status")
+
+Impossible_Means_k <- bind_cols(Impossible_Means_k, demographic)
+Possible_Means_k <- bind_cols(Possible_Means_k, demographic)
+
+setwd("C:/Users/David/Desktop/Psych Lab Stuff/thesis paper notes/Data/Means+k") #Have to set working directory
+write_csv(Impossible_Means_k, "Impossible_Means_k.csv")
+write_csv(Possible_Means_k, "Possible_Means_k.csv")
+
+
+```
